@@ -3,8 +3,171 @@
     ViewData["Title"] = "SMS Status Query";
 }
 
-<div class="container mt-4">
-    <h1 class="mb-4">SMS Status Query</h1>
+    <div class="container mt-4">
+    <h1 class="mb-4"><i class="bi bi-chat-dots me-2"></i>SMS Status Query</h1>
+    
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title" id="loadingModalLabel">Processing File</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Please wait while we process your file...</p>
+                    <div class="progress mt-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showLoading() {
+            // Disable the button
+            document.getElementById('processBtn').disabled = true;
+            
+            // Show loading modal
+            var loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            loadingModal.show();
+            
+            // Automatically submit the form
+            setTimeout(function() {
+                document.querySelector('form').submit();
+            }, 100);
+        }
+        
+        // Show loading modal if there are results (page was refreshed)
+        document.addEventListener('DOMContentLoaded', function() {
+            @if (Model.HasResults)
+            {
+                <text>
+                var loadingModal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
+                if (loadingModal) {
+                    loadingModal.hide();
+                }
+                </text>
+            }
+        });
+        
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            filterTable();
+        });
+        
+        document.getElementById('clearSearch').addEventListener('click', function() {
+            document.getElementById('searchInput').value = '';
+            filterTable();
+        });
+        
+        // Status filter functionality
+        document.querySelectorAll('.filter-status').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const status = this.getAttribute('data-status');
+                filterByStatus(status);
+            });
+        });
+        
+        // Export functionality
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            exportResults();
+        });
+        
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#resultsTable tbody tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const searchText = row.getAttribute('data-search').toLowerCase();
+                const isVisible = searchText.includes(searchTerm);
+                row.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+            
+            updateRowNumbers();
+        }
+        
+        function filterByStatus(status) {
+            const rows = document.querySelectorAll('#resultsTable tbody tr');
+            
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status');
+                const isVisible = status === 'all' || rowStatus === status.toLowerCase();
+                row.style.display = isVisible ? '' : 'none';
+            });
+            
+            updateRowNumbers();
+        }
+        
+        function updateRowNumbers() {
+            const visibleRows = document.querySelectorAll('#resultsTable tbody tr:not([style*="display: none"])');
+            visibleRows.forEach((row, index) => {
+                row.querySelector('td:first-child').textContent = index + 1;
+            });
+        }
+        
+        function exportResults() {
+            const exportBtn = document.getElementById('exportBtn');
+            const originalText = exportBtn.innerHTML;
+            
+            // Show loading state
+            exportBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Exporting...';
+            exportBtn.disabled = true;
+            
+            // Create form to submit export request
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '@Url.Action("ExportResults", "SmsQuery")';
+            
+            // Add CSRF token
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '__RequestVerificationToken';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+            }
+            
+            // Add model data as hidden fields
+            @if (Model.Records != null)
+            {
+                <text>
+                const recordsJson = '@Html.Raw(Json.Serialize(Model.Records))';
+                const statusResultsJson = '@Html.Raw(Json.Serialize(Model.StatusResults))';
+                
+                const recordsInput = document.createElement('input');
+                recordsInput.type = 'hidden';
+                recordsInput.name = 'Records';
+                recordsInput.value = recordsJson;
+                form.appendChild(recordsInput);
+                
+                const statusResultsInput = document.createElement('input');
+                statusResultsInput.type = 'hidden';
+                statusResultsInput.name = 'StatusResults';
+                statusResultsInput.value = statusResultsJson;
+                form.appendChild(statusResultsInput);
+                </text>
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+            
+            // Restore button after a delay
+            setTimeout(() => {
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+            }, 2000);
+        }
+    </script>
+}
+        </div>
+    </div>
     
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
@@ -21,21 +184,23 @@
     }
     
     <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">Upload Excel File</h5>
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Upload CSV File</h5>
         </div>
         <div class="card-body">
             <form method="post" enctype="multipart/form-data" asp-action="UploadAndQuery">
-                <div class="mb-3">
-                    <label for="excelFile" class="form-label">Select Excel File</label>
+                 <div class="mb-3">
+                    <label for="excelFile" class="form-label"><i class="bi bi-file-earmark-arrow-up me-1"></i>Select CSV File</label>
                     <input type="file" class="form-control" id="excelFile" name="excelFile" accept=".csv" required>
                     <div class="form-text">
-                        File must contain these columns in order: <strong>PhoneNumber, ReferenceNumber, PersonName</strong><br>
-                        Supported format: CSV (.csv)<br>
-                        Sample file: <a href="/samples/sample_sms_data.csv" download>Download Sample CSV</a>
+                        <i class="bi bi-info-circle me-1"></i>File must contain these columns in order: <strong>PhoneNumber, ReferenceNumber, PersonName</strong><br>
+                        <i class="bi bi-filetype-csv me-1"></i>Supported format: CSV (.csv)<br>
+                        <i class="bi bi-download me-1"></i>Sample file: <a href="/samples/sample_sms_data.csv" download>Download Sample CSV</a>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">Process File</button>
+                 <button type="submit" class="btn btn-primary" id="processBtn" onclick="showLoading()">
+                     <i class="bi bi-gear me-1"></i>Process File
+                 </button>
             </form>
         </div>
     </div>
@@ -43,14 +208,121 @@
     @if (Model.HasResults)
     {
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Query Results</h5>
+                 <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Query Results</h5>
             </div>
             <div class="card-body">
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 col-sm-6 mb-3">
+                         <div class="card text-white bg-primary">
+                            <div class="card-body text-center">
+                                <h5 class="card-title"><i class="bi bi-list-ol me-1"></i>Total</h5>
+                                <h2 class="card-text">@Model.TotalRecords</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                         <div class="card text-white bg-success">
+                            <div class="card-body text-center">
+                                <h5 class="card-title"><i class="bi bi-check-circle me-1"></i>Delivered</h5>
+                                <h2 class="card-text">@Model.DeliveredCount</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                         <div class="card text-white bg-danger">
+                            <div class="card-body text-center">
+                                <h5 class="card-title"><i class="bi bi-x-circle me-1"></i>Failed</h5>
+                                <h2 class="card-text">@Model.FailedCount</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                         <div class="card text-white bg-warning">
+                            <div class="card-body text-center">
+                                <h5 class="card-title"><i class="bi bi-clock me-1"></i>Pending</h5>
+                                <h2 class="card-text">@Model.PendingCount</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                 <!-- Progress Bar -->
+                @if (Model.TotalRecords > 0)
+                {
+                    <div class="mb-4">
+                        <h6><i class="bi bi-bar-chart me-1"></i>Status Distribution</h6>
+                        <div class="progress" style="height: 30px;">
+                            @{
+                                var deliveredPercent = (Model.DeliveredCount * 100) / Model.TotalRecords;
+                                var failedPercent = (Model.FailedCount * 100) / Model.TotalRecords;
+                                var pendingPercent = (Model.PendingCount * 100) / Model.TotalRecords;
+                                var errorPercent = (Model.ErrorCount * 100) / Model.TotalRecords;
+                                var otherPercent = (Model.OtherCount * 100) / Model.TotalRecords;
+                            }
+                            <div class="progress-bar bg-success" style="width: @(deliveredPercent)%" title="Delivered: @Model.DeliveredCount">
+                                @Model.DeliveredCount
+                            </div>
+                            <div class="progress-bar bg-danger" style="width: @(failedPercent)%" title="Failed: @Model.FailedCount">
+                                @Model.FailedCount
+                            </div>
+                            <div class="progress-bar bg-warning" style="width: @(pendingPercent)%" title="Pending: @Model.PendingCount">
+                                @Model.PendingCount
+                            </div>
+                            <div class="progress-bar bg-secondary" style="width: @(errorPercent)%" title="Errors: @Model.ErrorCount">
+                                @Model.ErrorCount
+                            </div>
+                            <div class="progress-bar bg-info" style="width: @(otherPercent)%" title="Other: @Model.OtherCount">
+                                @Model.OtherCount
+                            </div>
+                        </div>
+                         <div class="mt-2 small text-muted">
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Delivered</span>
+                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>
+                            <span class="badge bg-warning"><i class="bi bi-clock me-1"></i>Pending</span>
+                            <span class="badge bg-secondary"><i class="bi bi-exclamation-triangle me-1"></i>Errors</span>
+                            <span class="badge bg-info"><i class="bi bi-question-circle me-1"></i>Other</span>
+                        </div>
+                    </div>
+                }
+                
+                 <!-- Filters and Actions -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search in results...">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch" title="Clear search">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-funnel me-1"></i> Filter by Status
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item filter-status" href="#" data-status="all"><i class="bi bi-list me-1"></i>All Statuses</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item filter-status" href="#" data-status="DELIVERED"><i class="bi bi-check-circle me-1"></i>Delivered</a></li>
+                                <li><a class="dropdown-item filter-status" href="#" data-status="FAILED"><i class="bi bi-x-circle me-1"></i>Failed</a></li>
+                                <li><a class="dropdown-item filter-status" href="#" data-status="PENDING"><i class="bi bi-clock me-1"></i>Pending</a></li>
+                                <li><a class="dropdown-item filter-status" href="#" data-status="ERROR"><i class="bi bi-exclamation-triangle me-1"></i>Errors</a></li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-success ms-2" id="exportBtn" title="Export results to CSV">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Export Results
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="table-responsive">
-                    <table class="table table-striped table-bordered">
+                    <table class="table table-striped table-bordered" id="resultsTable">
                         <thead class="table-dark">
                             <tr>
+                                <th>#</th>
                                 <th>Phone Number</th>
                                 <th>Reference Number</th>
                                 <th>Person Name</th>
@@ -59,6 +331,9 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @{
+                                int rowNumber = 1;
+                            }
                             @foreach (var record in Model.Records)
                             {
                                 var status = Model.StatusResults.ContainsKey(record.ReferenceNumber) 
@@ -69,37 +344,42 @@
                                         ErrorMessage = "Reference number not found in service" 
                                     };
                                 
-                                <tr>
+                                <tr data-status="@status.Status.ToLower()" data-search="@($"{record.PhoneNumber} {record.ReferenceNumber} {record.PersonName} {status.Status} {status.ErrorMessage}")">
+                                    <td>@rowNumber</td>
                                     <td>@record.PhoneNumber</td>
                                     <td>@record.ReferenceNumber</td>
                                     <td>@record.PersonName</td>
                                     <td>
                                         @if (status.Status == "DELIVERED")
                                         {
-                                            <span class="badge bg-success">@status.Status</span>
+                                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>@status.Status</span>
                                         }
                                         else if (status.Status == "FAILED" || status.Status == "INVALID")
                                         {
-                                            <span class="badge bg-danger">@status.Status</span>
+                                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>@status.Status</span>
                                         }
                                         else if (status.Status == "PENDING")
                                         {
-                                            <span class="badge bg-warning text-dark">@status.Status</span>
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>@status.Status</span>
+                                        }
+                                        else if (status.Status.Contains("ERROR"))
+                                        {
+                                            <span class="badge bg-secondary"><i class="bi bi-exclamation-triangle me-1"></i>@status.Status</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-info">@status.Status</span>
+                                            <span class="badge bg-info"><i class="bi bi-question-circle me-1"></i>@status.Status</span>
                                         }
                                     </td>
                                     <td>
                                         @if (!string.IsNullOrEmpty(status.ErrorMessage))
                                         {
                                             <span class="text-danger">@status.ErrorMessage</span>
-                                            @if (!string.IsNullOrEmpty(status.ErrorCode))
-                                            {
-                                                <br/>
-                                                <small class="text-muted">Code: @status.ErrorCode</small>
-                                            }
+                                         @if (!string.IsNullOrEmpty(status.ErrorCode))
+                                        {
+                                            <br/>
+                                            <small class="text-muted"><i class="bi bi-code me-1"></i>Code: @status.ErrorCode</small>
+                                        }
                                         }
                                         else
                                         {
@@ -107,6 +387,7 @@
                                         }
                                     </td>
                                 </tr>
+                                rowNumber++;
                             }
                         </tbody>
                     </table>
