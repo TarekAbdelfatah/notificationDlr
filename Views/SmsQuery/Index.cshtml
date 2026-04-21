@@ -1,0 +1,117 @@
+@model notificationDlr.Models.SmsQueryViewModel
+@{
+    ViewData["Title"] = "SMS Status Query";
+}
+
+<div class="container mt-4">
+    <h1 class="mb-4">SMS Status Query</h1>
+    
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @Model.ErrorMessage
+        </div>
+    }
+    
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success" role="alert">
+            @Model.SuccessMessage
+        </div>
+    }
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Upload Excel File</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" asp-action="UploadAndQuery">
+                <div class="mb-3">
+                    <label for="excelFile" class="form-label">Select Excel File</label>
+                    <input type="file" class="form-control" id="excelFile" name="excelFile" accept=".csv" required>
+                    <div class="form-text">
+                        File must contain these columns in order: <strong>PhoneNumber, ReferenceNumber, PersonName</strong><br>
+                        Supported format: CSV (.csv)<br>
+                        Sample file: <a href="/samples/sample_sms_data.csv" download>Download Sample CSV</a>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Process File</button>
+            </form>
+        </div>
+    </div>
+    
+    @if (Model.HasResults)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Query Results</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Phone Number</th>
+                                <th>Reference Number</th>
+                                <th>Person Name</th>
+                                <th>Status</th>
+                                <th>Error Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var record in Model.Records)
+                            {
+                                var status = Model.StatusResults.ContainsKey(record.ReferenceNumber) 
+                                    ? Model.StatusResults[record.ReferenceNumber] 
+                                    : new notificationDlr.Models.SmsStatusResult 
+                                    { 
+                                        Status = "NOT_FOUND", 
+                                        ErrorMessage = "Reference number not found in service" 
+                                    };
+                                
+                                <tr>
+                                    <td>@record.PhoneNumber</td>
+                                    <td>@record.ReferenceNumber</td>
+                                    <td>@record.PersonName</td>
+                                    <td>
+                                        @if (status.Status == "DELIVERED")
+                                        {
+                                            <span class="badge bg-success">@status.Status</span>
+                                        }
+                                        else if (status.Status == "FAILED" || status.Status == "INVALID")
+                                        {
+                                            <span class="badge bg-danger">@status.Status</span>
+                                        }
+                                        else if (status.Status == "PENDING")
+                                        {
+                                            <span class="badge bg-warning text-dark">@status.Status</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-info">@status.Status</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(status.ErrorMessage))
+                                        {
+                                            <span class="text-danger">@status.ErrorMessage</span>
+                                            @if (!string.IsNullOrEmpty(status.ErrorCode))
+                                            {
+                                                <br/>
+                                                <small class="text-muted">Code: @status.ErrorCode</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
