@@ -141,17 +141,33 @@
                 const recordsJson = '@Html.Raw(Json.Serialize(Model.Records))';
                 const statusResultsJson = '@Html.Raw(Json.Serialize(Model.StatusResults))';
                 
+                // Debug logging
+                console.log('Records JSON length:', recordsJson.length);
+                console.log('Status Results JSON length:', statusResultsJson.length);
+                console.log('First 500 chars of recordsJson:', recordsJson.substring(0, Math.min(500, recordsJson.length)));
+                console.log('First 500 chars of statusResultsJson:', statusResultsJson.substring(0, Math.min(500, statusResultsJson.length)));
+                
                 const recordsInput = document.createElement('input');
                 recordsInput.type = 'hidden';
-                recordsInput.name = 'Records';
+                recordsInput.name = 'recordsJson';
                 recordsInput.value = recordsJson;
                 form.appendChild(recordsInput);
                 
                 const statusResultsInput = document.createElement('input');
                 statusResultsInput.type = 'hidden';
-                statusResultsInput.name = 'StatusResults';
+                statusResultsInput.name = 'statusResultsJson';
                 statusResultsInput.value = statusResultsJson;
                 form.appendChild(statusResultsInput);
+                </text>
+            }
+            else
+            {
+                <text>
+                console.error('No records available for export');
+                alert('No data available to export. Please process a file first.');
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+                return;
                 </text>
             }
             

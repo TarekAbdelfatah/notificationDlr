@@ -76,30 +76,84 @@ namespace notificationDlr.Controllers
         }
         
         [HttpPost]
-        public IActionResult ExportResults(SmsQueryViewModel model)
+        public IActionResult ExportResults([FromForm] string recordsJson, [FromForm] string statusResultsJson)
         {
-            if (model.Records == null || model.Records.Count == 0)
+            try
             {
-                return BadRequest("No data to export");
+                Console.WriteLine($"Export request received. Records JSON length: {recordsJson?.Length}, Status Results JSON length: {statusResultsJson?.Length}");
+                
+                if (string.IsNullOrEmpty(recordsJson) || string.IsNullOrEmpty(statusResultsJson))
+                {
+                    Console.WriteLine("Missing JSON data");
+                    return BadRequest("No data to export");
+                }
+                
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                
+                var records = System.Text.Json.JsonSerializer.Deserialize<List<SmsRecord>>(recordsJson, options);
+                var statusResults = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, SmsStatusResult>>(statusResultsJson, options);
+                
+                if (records == null || records.Count == 0)
+                {
+                    Console.WriteLine("No records found after deserialization");
+                    return BadRequest("No records to export");
+                }
+                
+                if (statusResults == null)
+                {
+                    Console.WriteLine("No status results found after deserialization");
+                    statusResults = new Dictionary<string, SmsStatusResult>();
+                }
+                
+                Console.WriteLine($"Processing {records.Count} records and {statusResults.Count} status results");
+                
+                // Debug: Print first few records and status results
+                if (records.Count > 0)
+                {
+                    Console.WriteLine($"First record - Phone: {records[0].PhoneNumber}, Ref: {records[0].ReferenceNumber}, Name: {records[0].PersonName}");
+                }
+                
+                if (statusResults.Count > 0)
+                {
+                    var firstKey = statusResults.Keys.First();
+                    Console.WriteLine($"First status result - Key: {firstKey}, Status: {statusResults[firstKey].Status}");
+                }
+                
+                var csvContent = GenerateCsvContent(records, statusResults);
+                var fileName = $"sms_status_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+                
+                Console.WriteLine($"Generated CSV with {csvContent.Length} characters");
+                
+                // Debug: Print first few lines of CSV
+                var csvLines = csvContent.Split(Environment.NewLine);
+                for (int i = 0; i < Math.Min(5, csvLines.Length); i++)
+                {
+                    Console.WriteLine($"CSV Line {i}: {csvLines[i]}");
+                }
+                
+                return File(System.Text.Encoding.UTF8.GetBytes(csvContent), "text/csv", fileName);
             }
-            
-            var csvContent = GenerateCsvContent(model);
-            var fileName = $"sms_status_results_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
-            
-            return File(System.Text.Encoding.UTF8.GetBytes(csvContent), "text/csv", fileName);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error exporting data: {ex.Message}\n{ex.StackTrace}");
+                return BadRequest($"Error exporting data: {ex.Message}");
+            }
         }
         
-        private string GenerateCsvContent(SmsQueryViewModel model)
+        private string GenerateCsvContent(List<SmsRecord> records, Dictionary<string, SmsStatusResult> statusResults)
         {
             var csvLines = new List<string>
             {
                 "PhoneNumber,ReferenceNumber,PersonName,Status,ErrorCode,ErrorMessage"
             };
             
-            foreach (var record in model.Records)
+            foreach (var record in records)
             {
-                var status = model.StatusResults.ContainsKey(record.ReferenceNumber) 
-                    ? model.StatusResults[record.ReferenceNumber] 
+                var status = statusResults.ContainsKey(record.ReferenceNumber ?? "") 
+                    ? statusResults[record.ReferenceNumber ?? ""] 
                     : new SmsStatusResult 
                     { 
                         Status = "NOT_FOUND", 
@@ -126,6 +180,8 @@ namespace notificationDlr.Controllers
             
             return string.Join(Environment.NewLine, csvLines);
         }
+        
+
         
         private string EscapeCsvField(string field)
         {
